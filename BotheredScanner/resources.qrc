@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>img/icons/new_scan.png</file>
+        <file>img/icons/web-camera.png</file>
+        <file>img/icons/grid.png</file>
+        <file>img/icons/laser-pen.png</file>
+    </qresource>
+</RCC>
