@@ -76,8 +76,6 @@ public slots:
     void setBlurSize(int size);
     void setThreshold(int thresh);
 
-    void updatePosition();
-
     void shutdown();
 
 signals:
@@ -97,9 +95,13 @@ signals:
     void currentPosition(int pos);
     void currentAngle(double angle);
 
+    void scanComplete();
+
 private slots:
     void start();
     void finished();
+
+    void readPort();
 
 private:
     bool isOpened();
@@ -111,7 +113,7 @@ private:
 
     QSerialPort *laserPort;
 
-    QTimer positionTimer;
+    QTimer *readTimer;
     QMutex portMutex;
 
     int blurSize;
@@ -142,6 +144,8 @@ private:
     int steps;
     int microsteps;
     double gearing;
+
+    QString portBuffer;
 };
 
 #endif // LASERSCANNER_H

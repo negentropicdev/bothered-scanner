@@ -47,6 +47,8 @@ signals:
     void setLaserHome();
     void setLaserLeft();
     void setLaserRight();
+    void laserOn();
+    void laserOff();
 
     void setStepsPerRev(int s);
     void setGearing(double g);
@@ -88,6 +90,7 @@ private slots:
     void laserOpenError(QString reason);
     void laserPosition(int pos);
     void laserAngle(double angle);
+    void scanComplete();
 
     void on_btnMain_clicked();
     void on_btnBlur_clicked();

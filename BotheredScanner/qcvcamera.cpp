@@ -18,8 +18,6 @@ void enumerateCameraNames(QStringList *list) {
 
 QCVCamera::QCVCamera(QObject *parent) : QObject(parent)
 {
-    qDebug() << "QCVCamera()";
-
     frameWidth = 0;
     frameHeight = 0;
     cameraIndex = -1;
@@ -32,22 +30,16 @@ QCVCamera::QCVCamera(QObject *parent) : QObject(parent)
 
 QCVCamera::~QCVCamera()
 {
-    qDebug() << "~QCVCamera()";
-
     if (captureThread.isRunning()) {
         shutdown();
     }
 }
 
 void QCVCamera::started() {
-    qDebug() << "QCVCamera::started()";
-
     cap = new cv::VideoCapture();
 }
 
 void QCVCamera::finished() {
-    qDebug() << "QCVCamera::finished()";
-
     if (isOpened()) {
         closeCamera();
     }
@@ -73,16 +65,12 @@ void QCVCamera::showProperties()
 
 void QCVCamera::shutdown()
 {
-    qDebug() << "QCVCamera::shutdown()";
-
     captureThread.quit();
     captureThread.wait();
 }
 
 void QCVCamera::openCamera(int index)
 {
-    qDebug() << "QCVCamera::openCamera(): " << index;
-
     if (index == cameraIndex) {
         return;
     }
@@ -116,8 +104,6 @@ void QCVCamera::openCamera(int index)
 
 void QCVCamera::closeCamera()
 {
-    qDebug() << "QCVCamera::closeCamera()";
-
     if (cap->isOpened()) {
         cap->release();
     }
@@ -162,8 +148,6 @@ void QCVCamera::setResolution(int width, int height)
 
 void QCVCamera::capture()
 {
-    qDebug() << "QCVCamera::capture()";
-
     if (isOpened()) {
         cv::Mat frame;
         bool captured = cap->read(frame);

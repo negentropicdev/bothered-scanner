@@ -106,6 +106,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this,               &MainWindow::setBaseImage,          &scanner,   &LaserScanner::saveBase);
     connect(this,               &MainWindow::startScan,             &scanner,   &LaserScanner::startScan);
     connect(this,               &MainWindow::stopScan,              &scanner,   &LaserScanner::stopScan);
+    connect(this,               &MainWindow::laserOff,              &scanner,   &LaserScanner::laserOff);
 
     connect(ui->btnLaserOff,    &QPushButton::clicked,              &scanner,   &LaserScanner::laserOff);
     connect(ui->btnLaserOn,     &QPushButton::clicked,              &scanner,   &LaserScanner::laserOn);
@@ -131,6 +132,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&scanner,           &LaserScanner::threshImage,         this,       &MainWindow::threshFrame);
     connect(&scanner,           &LaserScanner::scanImage,           this,       &MainWindow::scanFrame);
     connect(&scanner,           &LaserScanner::depthImage,          this,       &MainWindow::depthFrame);
+    connect(&scanner,           &LaserScanner::scanComplete,        this,       &MainWindow::scanComplete);
 }
 
 MainWindow::~MainWindow()
@@ -213,6 +215,19 @@ void MainWindow::depthFrame(QMat mat)
         float *row;
         uchar *sRow;
 
+        float min = 1000000, max = 0;
+
+        for (int r = 0; r < nR; ++r) {
+            row = depth->ptr<float>(r);
+            for (int c = 0; c < nC; ++c) {
+                float v = row[c];
+                if (v > 0 && v < min) min = v;
+                if (v > max) max = v;
+            }
+        }
+
+        float range = max - min;
+
         for (int r = 0; r < nR; ++r) {
             row = depth->ptr<float>(r);
             sRow = scaled.ptr(r);
@@ -220,10 +235,7 @@ void MainWindow::depthFrame(QMat mat)
             for (int c = 0; c < nC; ++c) {
                 float v = row[c];
 
-                v = log10(v + 1.0) / 3.0;
-                if (isnan(v)) {
-                    v = 0;
-                }
+                v = 1.0 - ((v - min) / range);
 
                 v *= 255.0;
                 if (v > 255) v = 255;
@@ -298,6 +310,17 @@ void MainWindow::laserPosition(int pos)
 void MainWindow::laserAngle(double angle)
 {
     ui->lblAngle->setText(QString::number(angle));
+}
+
+void MainWindow::scanComplete()
+{
+    scan = false;
+    ui->btnStartScan->setChecked(false);
+    ui->btnLaserOff->setChecked(true);
+    ui->btnLaserOn->setChecked(false);
+
+    emit laserOff();
+    emit requestCapture();
 }
 
 void MainWindow::on_selectResolution_currentIndexChanged(const QString &arg1)

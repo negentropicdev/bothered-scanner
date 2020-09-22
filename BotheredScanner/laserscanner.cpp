@@ -2,6 +2,8 @@
 
 #include <QDebug>
 #include <cmath>
+#include <QRegularExpression>
+#include <QRegularExpressionMatch>
 
 #define PI 3.14159265359
 #define D2R(x) ((x) * PI / 180.0)
@@ -45,12 +47,19 @@ LaserScanner::~LaserScanner()
 
 void LaserScanner::start() {
     laserPort = new QSerialPort();
+    readTimer = new QTimer();
+
+    connect(readTimer, &QTimer::timeout, this, &LaserScanner::readPort);
 }
 
 void LaserScanner::finished() {
     closeLaserPort();
     delete laserPort;
     laserPort = 0;
+
+    disconnect(readTimer, &QTimer::timeout, this, &LaserScanner::readPort);
+    delete readTimer;
+    readTimer = 0;
 }
 
 void LaserScanner::setBlurSize(int size)
@@ -66,36 +75,6 @@ void LaserScanner::setThreshold(int thresh)
 bool LaserScanner::isOpened()
 {
     return laserPort != 0 && laserPort->isOpen();
-}
-
-void LaserScanner::updatePosition()
-{
-    if (isOpened()) {
-        portMutex.lock();
-        //laserPort->clear();
-        laserPort->write("c", 1);
-        //laserPort->flush();
-        //thread()->msleep(1);
-
-        char buf[10];
-        laserPort->readLine(buf, 10);
-        QString sVal(buf);
-        curPosition = sVal.toInt();
-
-        emit currentPosition(curPosition);
-
-        if (steps > 0 && gearing > 0 && microsteps > 0) {
-            double degPerStep = 360.0 / steps / gearing / microsteps;
-            int stepsFromHome = curPosition - homePos;
-            angle = 90 - stepsFromHome * degPerStep;
-
-            emit currentAngle(angle);
-        }
-        portMutex.unlock();
-
-        positionTimer.stop();
-        positionTimer.start(100);
-    }
 }
 
 void LaserScanner::shutdown()
@@ -178,11 +157,14 @@ void LaserScanner::setGearing(double g)
 
 void LaserScanner::newImage(QMat mat)
 {
+    bool scanFinished = false;
+
     if (active) {
         if (curPosition < rightPos) {
             stepRight();
         } else {
             active = false;
+            scanFinished = true;
         }
 
         emit requestCapture();
@@ -287,6 +269,10 @@ void LaserScanner::newImage(QMat mat)
     emit scanImage(QMat(chan));
 
     emit depthImage(QMat(depthMap));
+
+    if (scanFinished) {
+        emit scanComplete();
+    }
 }
 
 void LaserScanner::resolutionChanged(int width, int height)
@@ -316,6 +302,30 @@ void LaserScanner::stopScan()
     active = false;
 }
 
+void LaserScanner::readPort() {
+    if (laserPort->bytesAvailable() > 0) {
+        char buf[101];
+        laserPort->readLine(buf, 100);
+
+        QRegularExpression re("c(-?\\d+)");
+        QRegularExpressionMatch m = re.match(buf);
+
+        if (m.hasMatch()) {
+            curPosition = QString(m.captured(1)).toInt();
+
+            emit currentPosition(curPosition);
+
+            if (steps > 0 && gearing > 0 && microsteps > 0) {
+                double degPerStep = 360.0 / steps / gearing / microsteps;
+                int stepsFromHome = curPosition - homePos;
+                angle = 90 - stepsFromHome * degPerStep;
+
+                emit currentAngle(angle);
+            }
+        }
+    }
+}
+
 void LaserScanner::openLaserPort(QString portName)
 {
     laserPort->setPortName(portName);
@@ -326,7 +336,7 @@ void LaserScanner::openLaserPort(QString portName)
     laserPort->setFlowControl(QSerialPort::NoFlowControl);
 
     if (laserPort->open(QIODevice::ReadWrite)) {
-        updatePosition();
+        readTimer->start(1);
 
         emit laserReady();
     } else {
@@ -337,26 +347,19 @@ void LaserScanner::openLaserPort(QString portName)
 void LaserScanner::closeLaserPort()
 {
     if (isOpened()) {
-        portMutex.lock();
+        readTimer->stop();
         laserPort->close();
-        portMutex.unlock();
     }
 }
 
 void LaserScanner::stepLeft()
 {
-    portMutex.lock();
     write("<");
-    portMutex.unlock();
-    //updatePosition();
 }
 
 void LaserScanner::stepRight()
 {
-    portMutex.lock();
     write(">");
-    portMutex.unlock();
-    //updatePosition();
 }
 
 void LaserScanner::setLeftExtent()
@@ -372,7 +375,6 @@ void LaserScanner::setRightExtent()
 void LaserScanner::setHome()
 {
     homePos = curPosition;
-    //updatePosition();
 }
 
 void LaserScanner::goLeftExtent()
