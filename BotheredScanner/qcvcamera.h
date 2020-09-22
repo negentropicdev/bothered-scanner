@@ -42,6 +42,12 @@ public slots:
 
     void showProperties();
 
+    void shutdown();
+
+private slots:
+    void started();
+    void finished();
+
 private:
     QThread captureThread;
     QMutex mutex;

@@ -18,26 +18,42 @@ void enumerateCameraNames(QStringList *list) {
 
 QCVCamera::QCVCamera(QObject *parent) : QObject(parent)
 {
+    qDebug() << "QCVCamera()";
+
     frameWidth = 0;
     frameHeight = 0;
     cameraIndex = -1;
 
-    cap = new cv::VideoCapture();
-
     this->moveToThread(&captureThread);
-    //connect(&captureThread, &QThread::finished, this, &QCVCamera::captureFinished);
+    connect(&captureThread, &QThread::started, this, &QCVCamera::started);
+    connect(&captureThread, &QThread::finished, this, &QCVCamera::finished);
     captureThread.start();
 }
 
 QCVCamera::~QCVCamera()
 {
-    captureThread.quit();
-    captureThread.wait();
+    qDebug() << "~QCVCamera()";
+
+    if (captureThread.isRunning()) {
+        shutdown();
+    }
+}
+
+void QCVCamera::started() {
+    qDebug() << "QCVCamera::started()";
+
+    cap = new cv::VideoCapture();
+}
+
+void QCVCamera::finished() {
+    qDebug() << "QCVCamera::finished()";
 
     if (isOpened()) {
-        cap->release();
-        delete cap;
+        closeCamera();
     }
+
+    delete cap;
+    cap = 0;
 }
 
 bool QCVCamera::isOpened()
@@ -55,13 +71,21 @@ void QCVCamera::showProperties()
     cap->set(cv::CAP_PROP_SETTINGS, 1);
 }
 
+void QCVCamera::shutdown()
+{
+    qDebug() << "QCVCamera::shutdown()";
+
+    captureThread.quit();
+    captureThread.wait();
+}
+
 void QCVCamera::openCamera(int index)
 {
+    qDebug() << "QCVCamera::openCamera(): " << index;
+
     if (index == cameraIndex) {
         return;
     }
-
-    //mutex.lock();
 
     bool res;
 
@@ -71,8 +95,6 @@ void QCVCamera::openCamera(int index)
     res |= cap->set(cv::CAP_PROP_FRAME_WIDTH, 1280);
     res |= cap->set(cv::CAP_PROP_FRAME_HEIGHT, 720);
 
-    //setResolution(1920, 1080);
-
     if (isOpened()) {
         cameraIndex = index;
     } else {
@@ -81,15 +103,9 @@ void QCVCamera::openCamera(int index)
         cameraIndex = -1;
     }
 
-    //mutex.unlock();
-
     if (cap != 0) {
         frameWidth = cap->get(cv::CAP_PROP_FRAME_WIDTH);
         frameHeight = cap->get(cv::CAP_PROP_FRAME_HEIGHT);
-
-        //updateFPS();
-
-        //captureTimer.start();
 
         emit resolutionChanged(frameWidth, frameHeight);
         emit cameraReady();
@@ -100,13 +116,11 @@ void QCVCamera::openCamera(int index)
 
 void QCVCamera::closeCamera()
 {
-    //mutex.lock();
+    qDebug() << "QCVCamera::closeCamera()";
 
     if (cap->isOpened()) {
         cap->release();
     }
-
-    //mutex.unlock();
 
     emit cameraClosed();
 }
@@ -148,6 +162,8 @@ void QCVCamera::setResolution(int width, int height)
 
 void QCVCamera::capture()
 {
+    qDebug() << "QCVCamera::capture()";
+
     if (isOpened()) {
         cv::Mat frame;
         bool captured = cap->read(frame);

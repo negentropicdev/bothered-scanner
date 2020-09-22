@@ -78,6 +78,8 @@ public slots:
 
     void updatePosition();
 
+    void shutdown();
+
 signals:
     void channelImage(QMat mat);
     void blurredImage(QMat mat);
@@ -94,6 +96,10 @@ signals:
 
     void currentPosition(int pos);
     void currentAngle(double angle);
+
+private slots:
+    void start();
+    void finished();
 
 private:
     bool isOpened();

@@ -30,23 +30,27 @@ LaserScanner::LaserScanner(QObject *parent) : QObject(parent)
     leftPos = 0;
     rightPos = 0;
 
-    laserPort = new QSerialPort();
-
     this->moveToThread(&scannerThread);
+    connect(&scannerThread, &QThread::started, this, &LaserScanner::start);
+    connect(&scannerThread, &QThread::finished, this, &LaserScanner::finished);
     scannerThread.start();
-
-    connect(&positionTimer, &QTimer::timeout, this, &LaserScanner::updatePosition);
-    positionTimer.start(100);
 }
 
 LaserScanner::~LaserScanner()
 {
-    positionTimer.stop();
+    if (scannerThread.isRunning()) {
+        shutdown();
+    }
+}
 
+void LaserScanner::start() {
+    laserPort = new QSerialPort();
+}
+
+void LaserScanner::finished() {
     closeLaserPort();
-
-    scannerThread.quit();
-    scannerThread.wait();
+    delete laserPort;
+    laserPort = 0;
 }
 
 void LaserScanner::setBlurSize(int size)
@@ -92,6 +96,12 @@ void LaserScanner::updatePosition()
         positionTimer.stop();
         positionTimer.start(100);
     }
+}
+
+void LaserScanner::shutdown()
+{
+    scannerThread.quit();
+    scannerThread.wait();
 }
 
 void LaserScanner::write(QString s)

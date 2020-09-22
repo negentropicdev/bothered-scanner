@@ -135,8 +135,8 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-    scanner.closeLaserPort();
-    cam.closeCamera();
+    cam.shutdown();
+    scanner.shutdown();
 
     delete ui;
 }
@@ -144,6 +144,10 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_selectCamera_currentIndexChanged(int index)
 {
+    if (index < 0) {
+        return;
+    }
+
     curCamIndex = index;
     emit openCamera(index);
 }
