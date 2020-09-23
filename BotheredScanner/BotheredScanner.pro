@@ -42,6 +42,7 @@ SOURCES += \
     laserscanner.cpp \
     main.cpp \
     mainwindow.cpp \
+    pointcloud.cpp \
     qcvcamera.cpp \
     qmat.cpp
 
@@ -49,6 +50,7 @@ HEADERS += \
     digitalslider.h \
     laserscanner.h \
     mainwindow.h \
+    pointcloud.h \
     qcvcamera.h \
     qmat.h
 

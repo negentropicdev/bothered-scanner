@@ -7,6 +7,7 @@
 #include <QMutex>
 
 #include "qmat.h"
+#include "pointcloud.h"
 
 typedef QVector<int> Scan;
 
@@ -27,6 +28,8 @@ public:
     int getCurrentPos();
 
     bool wait();
+
+    QString getCloudPLY();
 
 public slots:
     void newImage(QMat mat);
@@ -125,7 +128,7 @@ private:
     bool active;
 
     cv::Mat baseMat;
-    cv::Mat baseRaw;
+    cv::Mat baseCol;
     cv::Mat depthMap;
 
     int fastDelay;
@@ -146,6 +149,8 @@ private:
     double gearing;
 
     QString portBuffer;
+
+    PointCloud cloud;
 };
 
 #endif // LASERSCANNER_H

@@ -5,6 +5,9 @@
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
 
+#include <QVector3D>
+#include <QColor>
+
 #define PI 3.14159265359
 #define D2R(x) ((x) * PI / 180.0)
 
@@ -125,6 +128,11 @@ bool LaserScanner::wait()
     return scannerThread.wait();
 }
 
+QString LaserScanner::getCloudPLY()
+{
+    return cloud.toPLY();
+}
+
 void LaserScanner::setAngle(double a)
 {
     angle = a;
@@ -186,7 +194,7 @@ void LaserScanner::newImage(QMat mat)
     emit blurredImage(QMat(chan));
 
     if (saveNextAsBase) {
-        baseRaw = mat.mat()->clone();
+        baseCol = mat.mat()->clone();
         baseMat = chan.clone();
         saveNextAsBase = false;
         hasBase = true;
@@ -225,6 +233,10 @@ void LaserScanner::newImage(QMat mat)
     uchar *row;
     float_t *depthRow;
 
+    double c_2 = nC / 2; // center col index
+    double r_2 = nR / 2; // center row index
+    double dA = hfov / nC; // angle per pixel
+
     for (int r = 0; r < nR; ++r) {
         row = chan.ptr(r);
 
@@ -245,18 +257,28 @@ void LaserScanner::newImage(QMat mat)
             if (hasBase) {
                 if (active) {
                     depthRow = depthMap.ptr<float_t>(r);
-
-                    double c_2 = nC / 2; // center pixel index
-                    double dA = hfov / nC; // angle per pixel
-                    double theta = (maxI - c_2) * dA;
+                    double theta = (maxI - c_2) * dA; //horizontal angle in camera
+                    double phi = (r_2 - r) * dA; //vertical angle in camera
                     double aR = angle * 3.14159265359 / 180.0;
                     double tR = theta * 3.14159265359 / 180.0;
+                    double pR = phi   * 3.14159265359 / 180.0;
 
-                    double sa = sin(aR);
+                    double sa = sin(aR); //sine of laser angle
                     //double cat = cos(aR - tR);
                     double sat = sin((PI / 2) - aR - tR);
 
                     double x = dist * sa / sat;
+
+                    QVector3D pos;
+                    pos.setX(x * sin(tR));
+                    pos.setY(x * sin(pR));
+                    pos.setZ(x * cos(tR) * cos(pR));
+
+                    cv::Vec3b cvCol = baseCol.at<cv::Vec3b>(r, maxI);
+
+                    QColor col(cvCol[2], cvCol[1], cvCol[0]);
+
+                    cloud.addPoint(r, maxI, pos, col);
 
                     double H = x * cos(tR);
 
@@ -279,6 +301,7 @@ void LaserScanner::resolutionChanged(int width, int height)
 {
     baseMat = cv::Mat::zeros(height, width, CV_8UC1);
     depthMap = cv::Mat::zeros(height, width, CV_32FC1);
+    cloud.reset(width, height);
 }
 
 void LaserScanner::saveBase()

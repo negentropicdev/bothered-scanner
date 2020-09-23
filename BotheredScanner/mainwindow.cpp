@@ -8,6 +8,8 @@
 #include <QGraphicsPixmapItem>
 
 #include <cmath>
+#include <QFile>
+#include <QFileDialog>
 
 #include "opencv2/opencv.hpp"
 
@@ -235,7 +237,9 @@ void MainWindow::depthFrame(QMat mat)
             for (int c = 0; c < nC; ++c) {
                 float v = row[c];
 
-                v = 1.0 - ((v - min) / range);
+                if (v > 0) {
+                    v = 1.0 - ((v - min) / range);
+                }
 
                 v *= 255.0;
                 if (v > 255) v = 255;
@@ -320,6 +324,18 @@ void MainWindow::scanComplete()
     ui->btnLaserOn->setChecked(false);
 
     emit laserOff();
+
+    QString ply = scanner.getCloudPLY();
+
+    QString filename = QFileDialog::getSaveFileName(this,
+        "Save Point Cloud", "", "PLY File (*.ply)");
+
+    QFile out(filename);
+    out.open(QIODevice::Text | QIODevice::WriteOnly);
+    qint64 w = out.write(ply.toLocal8Bit());
+    qDebug() << w;
+    out.close();
+
     emit requestCapture();
 }
 
